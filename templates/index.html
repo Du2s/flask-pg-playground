@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask + PostgreSQL демо</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .info {
+            margin-bottom: 20px;
+            padding: 8px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="buttons">
+        <button data-id="1">Кнопка 1</button>
+        <button data-id="2">Кнопка 2</button>
+        <button data-id="3">Кнопка 3</button>
+    </div>
+
+    <div id="info" class="info">
+        <!-- Здесь будет отображаться номер нажатой кнопки и сообщение -->
+        Нажмите любую кнопку
+    </div>
+
+    <div class="table-container">
+        <table id="result-table">
+            <thead>
+                <tr>
+                    <th>Данные появятся после нажатия кнопки</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>—</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Обработчики для кнопок
+        const buttons = document.querySelectorAll('button');
+        const infoDiv = document.getElementById('info');
+        const tableHead = document.querySelector('#result-table thead');
+        const tableBody = document.querySelector('#result-table tbody');
+
+        // Функция отображения таблицы
+        function renderTable(columns, rows) {
+            // Очищаем заголовок и тело
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+
+            if (!columns || columns.length === 0) {
+                // Если нет столбцов — показываем сообщение
+                tableHead.innerHTML = '<tr><th>Нет данных</th></tr>';
+                tableBody.innerHTML = '<tr><td>—</td></tr>';
+                return;
+            }
+
+            // Создаём заголовок
+            const headerRow = document.createElement('tr');
+            columns.forEach(col => {
+                const th = document.createElement('th');
+                th.textContent = col;
+                headerRow.appendChild(th);
+            });
+            tableHead.appendChild(headerRow);
+
+            // Создаём строки
+            rows.forEach(row => {
+                const tr = document.createElement('tr');
+                row.forEach(cell => {
+                    const td = document.createElement('td');
+                    td.textContent = cell;
+                    tr.appendChild(td);
+                });
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // Функция запроса к серверу
+        async function fetchData(buttonId) {
+            try {
+                const response = await fetch('/get_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ button_id: buttonId })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Ошибка сервера: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Выводим номер кнопки и сообщение
+                infoDiv.innerHTML = data.message || `Нажата кнопка №${buttonId}`;
+
+                // Отображаем таблицу из полученных данных
+                renderTable(data.columns, data.rows);
+
+            } catch (error) {
+                console.error('Ошибка:', error);
+                infoDiv.innerHTML = `Ошибка при загрузке данных для кнопки ${buttonId}`;
+                // Показываем таблицу с ошибкой
+                tableHead.innerHTML = '<tr><th>Ошибка</th></tr>';
+                tableBody.innerHTML = '<tr><td>Не удалось загрузить данные</td></tr>';
+            }
+        }
+
+        // Навешиваем обработчики на кнопки
+        buttons.forEach(button => {
+            button.addEventListener('click', () => {
+                const buttonId = parseInt(button.getAttribute('data-id'), 10);
+                fetchData(buttonId);
+            });
+        });
+    </script>
+</body>
+</html>
